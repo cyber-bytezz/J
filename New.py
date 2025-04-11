@@ -22,7 +22,6 @@ class FileSystem:
     def __init__(self):
         self.root = Directory("root")
         self.path_map = {"root": self.root}
-        self.name_set = {"root"}  # Global set to track all directory names
 
     def get_node(self, path):
         return self.path_map.get(path)
@@ -32,13 +31,10 @@ class FileSystem:
         if not parent:
             return
         for name in child_names:
-            if name in self.name_set:
-                continue  # ignore duplicate global names
             full_path = f"{parent_path}/{name}"
             node = Directory(name)
             parent.add_child(node)
             self.path_map[full_path] = node
-            self.name_set.add(name)
 
     def count_descendants(self, path):
         node = self.get_node(path)
@@ -104,26 +100,17 @@ class FileSystem:
             return "Invalid command"
 
         def clone_tree(node):
-            if node.name in self.name_set:
-                raise Exception("Duplicate name")
             new_node = Directory(node.name)
-            self.name_set.add(node.name)
             for child in node.children.values():
                 new_node.add_child(clone_tree(child))
             return new_node
 
-        try:
-            copied = clone_tree(src)
-        except:
-            return "Invalid command"
-
+        copied = clone_tree(src)
         dest.add_child(copied)
 
         new_path = f"{dest_path}/{src.name}"
 
         def register_paths(n, cur_path):
-            if cur_path in self.path_map:
-                return
             self.path_map[cur_path] = n
             for child in n.children.values():
                 register_paths(child, f"{cur_path}/{child.name}")
