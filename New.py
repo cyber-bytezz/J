@@ -13,10 +13,10 @@ class Directory:
         child.parent = self
         self.children[child.name] = child
 
-    def remove_child(self, name):
-        if name in self.children:
-            self.children[name].parent = None
-            del self.children[name]
+    def remove_child(self, child_name):
+        if child_name in self.children:
+            self.children[child_name].parent = None
+            del self.children[child_name]
 
 class FileSystem:
     def __init__(self):
@@ -60,28 +60,32 @@ class FileSystem:
             dest = dest.parent
         return False
 
+    def update_paths(self, n, cur_path):
+        self.path_map[cur_path] = n
+        for child in n.children.values():
+            self.update_paths(child, f"{cur_path}/{child.name}")
+
     def cut_paste(self, src_path, dest_path):
         src = self.get_node(src_path)
         dest = self.get_node(dest_path)
         if not src or not dest or src == dest or self.is_ancestor(src, dest) or src.name in dest.children:
             return "Invalid command"
 
+        # Remove old paths
         def remove_paths(n, cur_path):
             if cur_path in self.path_map:
                 del self.path_map[cur_path]
             for child in n.children.values():
                 remove_paths(child, f"{cur_path}/{child.name}")
-
         remove_paths(src, src_path)
+
+        # Cut and paste
         src.parent.remove_child(src.name)
         dest.add_child(src)
 
-        def update_paths(n, cur_path):
-            self.path_map[cur_path] = n
-            for child in n.children.values():
-                update_paths(child, f"{cur_path}/{child.name}")
-
-        update_paths(src, f"{dest_path}/{src.name}")
+        # Update new paths
+        new_path = f"{dest_path}/{src.name}"
+        self.update_paths(src, new_path)
         return "OK"
 
     def copy_paste(self, src_path, dest_path):
@@ -90,6 +94,7 @@ class FileSystem:
         if not src or not dest or src == dest or self.is_ancestor(src, dest) or src.name in dest.children:
             return "Invalid command"
 
+        # Clone tree with name validation
         def clone_tree(node):
             if node.name in self.name_set:
                 raise Exception("Duplicate")
@@ -105,17 +110,12 @@ class FileSystem:
             return "Invalid command"
 
         dest.add_child(copied)
+        new_path = f"{dest_path}/{copied.name}"
+        self.update_paths(copied, new_path)
 
-        def register_paths(n, cur_path):
-            if cur_path in self.path_map:
-                return
-            self.path_map[cur_path] = n
-            for child in n.children.values():
-                register_paths(child, f"{cur_path}/{child.name}")
-
-        register_paths(copied, f"{dest_path}/{copied.name}")
         if len(self.path_map) > 10**6:
             return "Invalid command"
+
         return "OK"
 
 def main():
