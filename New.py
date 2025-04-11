@@ -3,7 +3,6 @@ import threading
 
 sys.setrecursionlimit(1 << 25)
 
-
 class Directory:
     def __init__(self, name):
         self.name = name
@@ -18,7 +17,6 @@ class Directory:
         if child_name in self.children:
             self.children[child_name].parent = None
             del self.children[child_name]
-
 
 class FileSystem:
     def __init__(self):
@@ -69,14 +67,21 @@ class FileSystem:
         if src.name in dest.children:
             return "Invalid command"
 
-        # Detach from old parent
-        src.parent.remove_child(src.name)
+        # Remove old paths
+        def remove_paths(n, cur_path):
+            if cur_path in self.path_map:
+                del self.path_map[cur_path]
+            for child in n.children.values():
+                remove_paths(child, f"{cur_path}/{child.name}")
 
-        # Attach to new parent
-        new_path = f"{dest_path}/{src.name}"
+        remove_paths(src, src_path)
+
+        # Move node
+        src.parent.remove_child(src.name)
         dest.add_child(src)
 
-        # Update paths
+        # Register new paths
+        new_path = f"{dest_path}/{src.name}"
         def update_paths(n, cur_path):
             self.path_map[cur_path] = n
             for child in n.children.values():
@@ -105,6 +110,7 @@ class FileSystem:
         copied = clone_tree(src)
         dest.add_child(copied)
 
+        new_path = f"{dest_path}/{src.name}"
         def register_paths(n, cur_path):
             if cur_path in self.path_map:
                 return
@@ -112,14 +118,12 @@ class FileSystem:
             for child in n.children.values():
                 register_paths(child, f"{cur_path}/{child.name}")
 
-        new_path = f"{dest_path}/{src.name}"
         register_paths(copied, new_path)
 
         if len(self.path_map) > 10**6:
             return "Invalid command"
 
         return "OK"
-
 
 def main():
     fs = FileSystem()
@@ -142,6 +146,5 @@ def main():
             print(result)
         else:
             print("Invalid command")
-
 
 threading.Thread(target=main).start()
